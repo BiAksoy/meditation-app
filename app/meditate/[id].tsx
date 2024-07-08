@@ -8,35 +8,51 @@ import { AntDesign } from '@expo/vector-icons'
 import CustomButton from '@/components/CustomButton'
 import { Audio } from 'expo-av'
 import { MEDITATION_DATA, AUDIO_FILES } from '@/constants/MeditationData'
+import { useTimer } from '@/context/TimerContext'
 
 const Meditate = () => {
   const { id } = useLocalSearchParams()
 
-  const [secondsRemaining, setSecondsRemaining] = useState(10)
+  const { duration: secondsRemaining, setDuration } = useTimer()
+
   const [isMeditating, setIsMeditating] = useState(false)
-  const [audioSound, setAudioSound] = useState<Audio.Sound>()
+  const [audioSound, setAudioSound] = useState<Audio.Sound | null>(null)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
 
   useEffect(() => {
-    if (isMeditating && secondsRemaining > 0) {
+    if (secondsRemaining === 0) {
+      if (isPlayingAudio) {
+        audioSound?.unloadAsync()
+        setAudioSound(null)
+        setIsPlayingAudio(false)
+      }
+      setIsMeditating(false)
+      return
+    }
+
+    if (isMeditating) {
       const interval = setInterval(() => {
-        setSecondsRemaining((prev) => prev - 1)
+        setDuration((prev) => prev - 1)
       }, 1000)
 
       return () => clearInterval(interval)
     }
-  }, [secondsRemaining, isMeditating])
+  }, [secondsRemaining, isMeditating, isPlayingAudio])
 
   useEffect(() => {
     return () => {
-      if (audioSound) {
-        audioSound.unloadAsync()
-      }
+      audioSound?.unloadAsync()
     }
   }, [audioSound])
 
+  useEffect(() => {
+    return () => {
+      setDuration(10)
+    }
+  }, [setDuration])
+
   const toggleMeditationSessionStatus = async () => {
-    if (secondsRemaining === 0) setSecondsRemaining(10)
+    if (secondsRemaining === 0) setDuration(10)
 
     setIsMeditating((prev) => !prev)
 
@@ -44,7 +60,10 @@ const Meditate = () => {
   }
 
   const toggleSound = async () => {
-    const sound = audioSound ? audioSound : await initializeSound()
+    let sound = audioSound
+    if (!sound) {
+      sound = await initializeSound()
+    }
 
     const status = await sound.getStatusAsync()
 
@@ -64,6 +83,12 @@ const Meditate = () => {
 
     setAudioSound(sound)
     return sound
+  }
+
+  const handleAdjustDuration = () => {
+    if (isMeditating) toggleMeditationSessionStatus()
+
+    router.push('(modal)/adjust-meditation-duration')
   }
 
   const formattedTimeInMinutes = String(
@@ -96,8 +121,13 @@ const Meditate = () => {
 
           <View className="mb-5">
             <CustomButton
-              title="Start Meditation"
+              title="Adjust Duration"
+              onPress={handleAdjustDuration}
+            />
+            <CustomButton
+              title={isMeditating ? 'Stop Meditation' : 'Start Meditation'}
               onPress={toggleMeditationSessionStatus}
+              containerStyle="mt-4"
             />
           </View>
         </AppGradient>
