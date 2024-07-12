@@ -17,7 +17,6 @@ const AdjustMeditationDuration = () => {
   return (
     <View className="flex-1 relative">
       <AppGradient colors={['#161B2E', '#0A4D4A', '#766E67']}>
-        <Text>AdjustMeditationDuration</Text>
         <Pressable
           onPress={() => router.back()}
           className="absolute top-8 left-6 z-10"
